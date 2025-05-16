@@ -1,32 +1,39 @@
-from yt_dlp import YoutubeDL
+import yt_dlp
+from telegram import Bot
+
+def progress_status(d):
+    if d['status'] == 'downloading':
+        percent = d.get('_percent_str', '0%').strip()
+        speed = d.get('_speed_str', '0 KiB/s')
+        eta = d.get('eta', 0)
+        print(f"Downloading... {percent} at {speed}, ETA: {eta}s")
+    elif d['status'] == 'finished':
+        print("Download finished.")
 
 def search_youtube(query):
-    ydl_opts = {"quiet": True, "extract_flat": True, "skip_download": True}
-    with YoutubeDL(ydl_opts) as ydl:
-        search_result = ydl.extract_info(f"ytsearch10:{query}", download=False)
-        return search_result["entries"]
+    with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        info = ydl.extract_info(f"ytsearch10:{query}", download=False)['entries']
+    return [{'title': vid['title'], 'url': vid['webpage_url']} for vid in info]
 
-def get_download_options(video_url):
-    ydl_opts = {
-        "quiet": True,
-        "listformats": True
-    }
-    with YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=False)
-        formats = {f"{f['format_note']}": f["format_id"]
-                   for f in info['formats'] if f.get('vcodec') != "none" and f.get("format_note")}
+def get_download_options(url):
+    with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        info = ydl.extract_info(url, download=False)
+        formats = {}
+        for fmt in info.get('formats', []):
+            if fmt.get('vcodec') != 'none' and fmt.get('acodec') != 'none':
+                height = fmt.get('height')
+                if height:
+                    formats[f"{height}p"] = fmt['format_id']
         return formats
 
-def download_video(video_url, format_id, output_path):
+def download_video(url, format_id, output_path):
     ydl_opts = {
-        "format": format_id,
-        "outtmpl": output_path,
-        "progress_hooks": [progress_hook],
+        'format': format_id,
+        'outtmpl': output_path,
+        'noplaylist': True,
+        'progress_hooks': [progress_status],
+        # No cookies used here
     }
-    with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
 
-progress_status = {}
-def progress_hook(d):
-    if d["status"] == "downloading":
-        progress_status[d["filename"]] = d["_percent_str"], d["_speed_str"]
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
