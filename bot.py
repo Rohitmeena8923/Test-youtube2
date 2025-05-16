@@ -1,10 +1,9 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    filters, CallbackQueryHandler, ContextTypes
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 )
-from utils.youtube import search_youtube, get_download_options, download_video, progress_status
+from utils.youtube import search_youtube, get_download_options, download_video
 from utils.auth import is_admin
 from config import BOT_TOKEN
 
@@ -13,19 +12,34 @@ logging.basicConfig(level=logging.INFO)
 VIDEO_STORE = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Welcome to the YouTube Downloader Bot!\n\nUse /search <keywords> to find a video.")
+    await update.message.reply_text(
+        "Welcome to the YouTube Downloader Bot!\n\n"
+        "Use /search <keywords> to find YouTube videos."
+    )
 
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = ' '.join(context.args)
-    results = search_youtube(query)
-    keyboard = [[InlineKeyboardButton(r["title"][:40], callback_data=r["url"])] for r in results]
-    await update.message.reply_text("Top Results:", reply_markup=InlineKeyboardMarkup(keyboard))
+    try:
+        query = ' '.join(context.args)
+        if not query:
+            await update.message.reply_text("Please provide search keywords after /search.")
+            return
+
+        results = search_youtube(query)
+        keyboard = [
+            [InlineKeyboardButton(r["title"][:40], callback_data=r["url"])]
+            for r in results
+        ]
+
+        await update.message.reply_text("Top Results:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+    except Exception as e:
+        logging.error(f"Search failed: {e}")
+        await update.message.reply_text(f"Error during search: {e}")
 
 async def handle_video_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     url = query.data
-
     context.user_data["video_url"] = url
 
     try:
@@ -47,15 +61,16 @@ async def handle_video_select(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=InlineKeyboardMarkup(quality_buttons)
         )
     except Exception as e:
+        logging.error(f"Format selection error: {e}")
         await query.edit_message_text(f"Error getting formats: {e}")
 
 async def handle_quality_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     user_id = query.from_user.id
+
     if not is_admin(user_id):
-        await query.edit_message_text("Access denied. Subscribe to use this bot.")
+        await query.edit_message_text("Access denied. Only admins can download. Subscribe or upgrade access.")
         return
 
     try:
@@ -75,10 +90,11 @@ async def handle_quality_select(update: Update, context: ContextTypes.DEFAULT_TY
         await context.bot.send_video(chat_id=query.message.chat.id, video=open(output_path, "rb"))
 
     except Exception as e:
+        logging.error(f"Download error: {e}")
         await query.edit_message_text(f"Download failed: {e}")
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("/search [query] - Search YouTube")
+    await update.message.reply_text("/search [query] - Search YouTube\n/start - Welcome message")
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
