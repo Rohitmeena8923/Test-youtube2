@@ -13,7 +13,11 @@ VIDEO_STORE = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE): await update.message.reply_text("Welcome to the YouTube Downloader Bot!")
 
-async def search(update: Update, context: ContextTypes.DEFAULT_TYPE): query = ' '.join(context.args) results = search_youtube(query) keyboard = [[InlineKeyboardButton(r["title"][:40], callback_data=r["url"])] for r in results] await update.message.reply_text("Top Results:", reply_markup=InlineKeyboardMarkup(keyboard))
+async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = ' '.join(context.args)
+    results = search_youtube(query)
+    keyboard = [[InlineKeyboardButton(r["title"][:40], callback_data=r["url"])] for r in results]
+    await update.message.reply_text("Top Results:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def handle_video_select(update: Update, context: ContextTypes.DEFAULT_TYPE): query = update.callback_query await query.answer() url = query.data
 
