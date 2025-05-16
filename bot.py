@@ -1,4 +1,3 @@
-
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -13,17 +12,14 @@ logging.basicConfig(level=logging.INFO)
 
 VIDEO_STORE = {}
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Welcome to the YouTube Downloader Bot!")
-
+    await update.message.reply_text("Welcome to the YouTube Downloader Bot!\n\nUse /search <keywords> to find a video.")
 
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = ' '.join(context.args)
     results = search_youtube(query)
     keyboard = [[InlineKeyboardButton(r["title"][:40], callback_data=r["url"])] for r in results]
     await update.message.reply_text("Top Results:", reply_markup=InlineKeyboardMarkup(keyboard))
-
 
 async def handle_video_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -53,7 +49,6 @@ async def handle_video_select(update: Update, context: ContextTypes.DEFAULT_TYPE
     except Exception as e:
         await query.edit_message_text(f"Error getting formats: {e}")
 
-
 async def handle_quality_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -82,10 +77,8 @@ async def handle_quality_select(update: Update, context: ContextTypes.DEFAULT_TY
     except Exception as e:
         await query.edit_message_text(f"Download failed: {e}")
 
-
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("/search [query] - Search YouTube")
-
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -94,10 +87,9 @@ def main():
     app.add_handler(CommandHandler("search", search))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CallbackQueryHandler(handle_video_select, pattern=r"^https://"))
-    app.add_handler(CallbackQueryHandler(handle_quality_select, pattern=r"^quality\\|"))
+    app.add_handler(CallbackQueryHandler(handle_quality_select, pattern=r"^quality\|"))
 
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
