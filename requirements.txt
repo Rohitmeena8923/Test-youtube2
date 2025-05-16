@@ -1,0 +1,5 @@
+python-telegram-bot==20.7
+pytube
+yt_dlp
+aiohttp
+python-dotenv
